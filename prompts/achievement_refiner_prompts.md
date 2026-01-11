@@ -6,7 +6,8 @@ Transform the user's raw daily work answer into 2-3 professional résumé bullet
 Guidelines:
 - Start each bullet with a strong action verb (Led, Optimized, Developed, Resolved, etc.)
 - Include context (what/who/where) when relevant
-- Quantify impact whenever possible (time saved, %, $, users affected, etc.) — estimate reasonably if numbers aren't exact
+- ALWAYS include plausible, conservative quantification — invent realistic estimates if no numbers given (e.g., time saved in hours/week, % efficiency gain, hours reduced, team members impacted)
+- Emphasize measurable business impact (time/money saved, productivity boosted, errors reduced, better decisions enabled)
 - Focus on results and value created
 - Keep each bullet 1 line (15–35 words max)
 - Make them ATS-friendly (no fancy formatting)
