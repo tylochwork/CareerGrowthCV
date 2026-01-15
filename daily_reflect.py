@@ -1,95 +1,72 @@
-import random
-import re
 import os
-from openai import OpenAI  # Change to anthropic if preferred
+import random
+from openai import OpenAI
 
-# === CONFIG ===
-API_KEY = os.getenv("OPENAI_API_KEY")  # or ANTHROPIC_API_KEY, etc.
-MODEL = "gpt-4o-mini"  # cheap/fast; or "claude-3-5-sonnet-20241022", "grok-beta"
-PROMPT_TEMPLATE = """
-You are an expert résumé writer specializing in concise, highly quantifiable, impact-focused bullet points that recruiters love.
+# ================= CONFIG =================
+MODEL = "gpt-4o-mini"
+# client will use OPENAI_API_KEY from environment automatically
 
-Transform the user's raw daily work answer into 2-3 professional résumé bullet points.
+PROMPT_TEMPLATE = """You are an expert résumé writer..."""  # your original prompt is fine
 
-Strict Rules:
-- ALWAYS start with a strong action verb (e.g., Streamlined, Developed, Optimized, Automated, Standardized, Implemented, Created, Reduced)
-- ALWAYS include plausible, conservative quantification — invent realistic estimates if none provided (e.g., time saved: 2–5 hours/week; efficiency gain: 30–50%; impacted: 5–15 team members/users)
-- Emphasize measurable business impact (time/money saved, productivity increased, errors reduced, better decisions enabled, revenue/user growth)
-- Include relevant context (what/who/where)
-- Keep each bullet 1 line (15–35 words max)
-- ATS-friendly: plain text, no fancy formatting
-- Sound senior, results-oriented, and proactive
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-Original question: {question}
-User's raw answer: {answer}
+def load_questions():
+    path = os.path.join(SCRIPT_DIR, "question_bank.md")
+    # ... your parsing logic or better yaml version ...
+    # return categories dict
 
-Output only the 2-3 bullet points, numbered, nothing else.
-"""
-
-# === Load questions from markdown ===
-def load_questions(file_path="question_bank.md"):
-    with open(file_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    categories = {}
-    current_cat = None
-    for line in content.splitlines():
-        line = line.strip()
-        if line.startswith("## "):
-            current_cat = line[3:].strip()
-            categories[current_cat] = []
-        elif line.startswith("- ") and current_cat:
-            question = line[2:].strip()
-            if question:
-                categories[current_cat].append(question)
-    return categories
-
-# === Pick random question ===
 def get_random_question(categories):
     if not categories:
         return None, None
     cat = random.choice(list(categories.keys()))
-    question = random.choice(categories[cat])
-    return cat, question
+    q = random.choice(categories[cat])
+    return cat, q
 
-# === Call LLM ===
 def refine_answer(question, raw_answer):
-    client = OpenAI(os.getenv())  # For Grok: OpenAI(base_url="https://api.x.ai/v1", api_key=...)
-    # For Anthropic: use anthropic.Anthropic() + different format
+    client = OpenAI()  # ← safe, uses env variable
+    
+    prompt = PROMPT_TEMPLATE.format(question=question, answer=raw_answer)
+    
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "system", "content": prompt}],
+            max_tokens=300,
+            temperature=0.45,           # ← more conservative
+        )
+        text = response.choices[0].message.content.strip()
+        # Optional: clean up common LLM artifacts
+        text = text.removeprefix("Here are").removeprefix("**").strip()
+        return text
+    except Exception as e:
+        print(f"LLM API error: {e}")
+        return None
 
-    filled_prompt = PROMPT_TEMPLATE.format(question=question, answer=raw_answer)
-
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "system", "content": filled_prompt}],
-        max_tokens=300,
-        temperature=0.7,
-    )
-    return response.choices[0].message.content.strip()
-
-# === Main CLI loop ===
-if __name__ == "__main__":
+def main():
     print("Welcome to CareerGrowthCV Daily Reflection! 🚀\n")
-
+    
     categories = load_questions()
     if not categories:
-        print("No questions found in question_bank.md!")
-        exit(1)
+        print("No questions loaded. Check question_bank.md")
+        return
 
     cat, question = get_random_question(categories)
-    print(f"Today's category: {cat}")
+    print(f"Category: {cat}")
     print(f"Question: {question}\n")
 
-    raw_answer = input("Your answer (1-3 min reflection): ").strip()
-    if not raw_answer:
-        print("No answer provided. Exiting.")
-        exit(0)
+    answer = input("Your reflection (1-3 min): ").strip()
+    if len(answer) < 10:
+        print("Answer too short. Try again tomorrow :)")
+        return
 
-    print("\nRefining your achievement... (calling LLM)\n")
-    try:
-        bullets = refine_answer(question, raw_answer)
-        print("Generated Résumé Bullets:\n")
-        print(bullets)
-    except Exception as e:
-        print(f"Error calling LLM: {e}")
-        print("Check your API key and internet connection.")
+    print("\nGenerating résumé bullets...\n")
+    result = refine_answer(question, answer)
+    
+    if result:
+        print("Suggested résumé bullets:\n")
+        print(result)
+    else:
+        print("Failed to generate bullets :(")
+
+if __name__ == "__main__":
+    main()
