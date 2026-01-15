@@ -54,7 +54,7 @@ def get_random_question(categories):
 
 # === Call LLM ===
 def refine_answer(question, raw_answer):
-    client = OpenAI(api_key=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)  # For Grok: OpenAI(base_url="https://api.x.ai/v1", api_key=...)
+    client = OpenAI(os.getenv())  # For Grok: OpenAI(base_url="https://api.x.ai/v1", api_key=...)
     # For Anthropic: use anthropic.Anthropic() + different format
 
     filled_prompt = PROMPT_TEMPLATE.format(question=question, answer=raw_answer)
